@@ -33,6 +33,7 @@ data/       amazon_splits.zip  leave-one-out splits of Baby, Sports, Clothing, E
 results/    runs/*.json    361 result files (configuration, metrics, per-user test ranks, strata, placebos, timing)
             RESULTS.md, results.json
 protocol/   protocol written before the confirmatory runs (original in Chinese, English translation)
+paper/      MambaTestStudy_p3.pdf   draft of the paper
 ```
 
 ## Setup
