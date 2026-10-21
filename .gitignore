@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+*.tmp
+data/splits/
+ml-1m.zip
+results/runs_new/
+results/figures/
+results/queue.log
+.ipynb_checkpoints/
+.DS_Store
