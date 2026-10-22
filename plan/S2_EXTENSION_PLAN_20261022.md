@@ -1,6 +1,7 @@
 # S2 扩展计划（2026-10-22）：从"哪个部件带来精度"到"什么时候需要状态"
 
-> **用途**：在 S1（本仓库现有的论文与 361 个运行）的基础上加入 4 组新实验，合成一篇论文。
+> **用途**：在 S1（本仓库现有的论文与 361 个运行）的基础上加入 4 组新实验，合成一篇论文。S1 尚未投稿，直接整合（投稿与期刊见第 7 节）。
+> **目录**：1 结构｜2 新实验 E1–E7｜3 新假设 H6–H11｜4 执行顺序｜5 论文改动｜6 风险｜7 投稿与定位｜8 其他想法 E8–E11｜9 审稿人问题预案｜10 未纳入的想法｜附录 A 试点数字｜B 切片代码｜C 合成数据代码｜D HA 分解｜E 英文贡献点与摘要草稿
 > **这是计划，不是冻结协议。** 第 3 节的新假设要在开跑前另存为 `protocol/PROTOCOL_S2_FROZEN_<日期>.md`，记录 SHA-256 后再跑，写法与 S1 协议相同（偏离逐条追加）。
 > **附录 A 的试点数字来自另一套实现**（1 层 Mamba4Rec、Mamba4Rec 原始初始化、单个种子、部分数据集不同），只用来决定"做什么"，**不进论文**。论文里的所有新数字都必须用本仓库的外壳（`src/s1_lib.py`）、7 种混合器、调参网格和种子重跑。两套实现的结论在 Amazon 上甚至方向不同（试点：SASRec 比 Mamba4Rec 高 12%；S1：Mamba 比 SASRec 高 5%，同一份 Baby 数据），不能混用。
 
@@ -191,7 +192,11 @@ H6–H11 中任何一条不成立都照实写进论文，不因结果调整网�
 ## 5. 论文改动清单
 
 - **摘要 / 引言**：贡献点从"部件归因"扩展为"部件 → 数据 → 样本 → 能力 → 解释"。
-- **相关工作**：加入 Petrov et al.（RecSys 2026，arXiv 2608.19833，"Do Sequential Recommendation Benchmarks Really Require Higher-Order Sequence Modelling?"）。这是数据集层面最接近的工作，必须引用并说明区别：它只到数据集层面，没有拆部件、没有切样本。再加合成能力基准（Zoology [49] 已引用；其他候选引用前核对）。**所有新引用投稿前逐条核对。**
+- **相关工作**：
+  - 加入 Petrov et al.（RecSys 2026，arXiv 2608.19833，"Do Sequential Recommendation Benchmarks Really Require Higher-Order Sequence Modelling?"）。这是数据集层面最接近的工作，必须引用并说明区别：它只到数据集层面，没有拆部件、没有切样本。
+  - 加入 Kozaki et al.（arXiv 2608.14021，"Residual Dominance as a Structural Account of Last-Item Reliance …"，引用前核对完整标题）。它用残差通路解释 SASRec 对最后一个物品的依赖，与 S1 的 H3 和"去掉最后一个物品"安慰剂直接相关。S1 的外壳同样有残差 + 共享输入输出嵌入，可以在讨论里把 H3 的结果和这个机制联系起来。
+  - 合成能力基准：Zoology [49] 已引用；其他候选引用前核对。
+  - **所有新引用投稿前逐条核对。**
 - **方法**：新增 3 个小节（证据距离切片、合成任务、HA 分解）。
 - **结果**：新增 RQ3–RQ6 小节；ML-20M 并入表 2 / 图 2。
 - **讨论**：选择性的说法取决于 H10。成立就写成"选择性有能力、但现有基准不需要"；不成立就保持"没有可靠增益"。
@@ -209,6 +214,55 @@ H6–H11 中任何一条不成立都照实写进论文，不因结果调整网�
 | ML-20M 太慢或蓝屏 | 先计时一个运行；沿用 S1 的批大小与显存上限；必要时种子减到 0–2（事先写明） |
 | 2 块 HA 展开不忠实 | 主分析用 1 块 Mamba（Mamba4Rec 默认），2 块只作次要分析 |
 | `gru_ln` 超过 EMA | 改写"近因滤波最准"的表述，作为新发现报告 |
+
+---
+
+## 7. 投稿与定位（2026-10-22 确认：S1 尚未投稿 → 直接整合）
+
+- **不再单独投 S1**。整合完成后作为一篇论文投稿；投稿前把 README 和引用信息里的 "submitted to *IEEE Access*" 改为实际投稿的期刊。
+- **期刊**：整合后内容（部件 → 数据 → 样本 → 能力 → 解释，5 个种子 + 事先假设）够投更好的期刊：
+  - 首选 **ACM TORS**（ACM Transactions on Recommender Systems）：受控评测、可复现性研究很对口；
+  - 其次 **Information Processing & Management**；
+  - 退路 IEEE Access（S1 原计划）。
+  - 投稿前核对目标期刊的篇幅、补充材料大小和数据可用性要求（仓库已经满足"代码 + 逐运行结果 + 切分"）。
+- **作者贡献 / AI 声明**：S1 草稿的致谢已经如实说明使用 Claude 写代码、作图和起草，整合版保持同样的写法。
+- **建议的投稿顺序**：先完成 E1（ML-1M 已有）→ E5 → E3 → E2 → E4，每做完一项就更新 `results/RESULTS.md`。E2、E4 太慢时，可以先投不含 E4 的版本（RQ3–RQ5），E4 留作返修材料；这一点要在 S2 协议里事先写明哪些是必做、哪些可选。
+
+## 8. 其他想法（可选扩展，按价值排序）
+
+| 编号 | 想法 | 价值 | 成本 | 来源 / 证据 |
+|---|---|---|---|---|
+| E1-R | **切片定义的敏感性**：远程阈值 10 / 20 / 40 步，近程窗口 3 / 5 / 10，关联度换成共现次数或条件概率 P(t\|h)。事先写进协议，作为稳健性分析 | 高（审稿人一定会问"为什么是 20 步、为什么用 PMI"） | 不训练，1 小时 | — |
+| E8 | **部署含义：时不变块可以按卷积计算**。`lti` 的 Δ、B、C 是常数，SSM 等价于一个固定的因果卷积核，可以预先算好；在没有 CUDA 融合扫描核的硬件（CPU、核显、NPU）上比选择性扫描快得多。结合"短历史上选择性没有增益"，可以给出实用建议：短历史场景部署时用时不变 / 卷积形式 | 中高（讨论和效率部分更有说服力） | CPU 计时，半天 | 试点（OpenVINO 2026.4.1，Intel CPU + Arc 140T 核显，batch 1，L=50）：CPU 上 SASRec 0.38 ms、选择性扫描 2.22 ms、LTI 卷积 0.73 ms、GRU 0.47 ms；核显上 1.48 / 10.3 / 1.68 / 32.7 ms。转换后与 PyTorch 的 top-10 一致率 0.98–1.0 |
+| E9 | 加一个 Mamba-2（SSD）混合器（SSD4Rec [14] 用的就是它） | 中（回应"只测了 Mamba-1"） | 1–2 小时 GPU | — |
+| E10 | 第三个长历史数据集（如 Last.fm-1K、KuaiRand） | 中（ML-1M、ML-20M 都是电影评分，同一领域） | 需下载 + 10 小时以上 | — |
+| E11 | ML-20M 全量（13.8 万用户）只跑 `mamba`、`lti`、`mean`，种子 0 | 低中（回应"子集是否有代表性"） | 很重 | 至少在论文里报告子集与全量的长度分布对比（不训练） |
+
+## 9. 审稿人可能的问题与预案
+
+| 可能的问题 | 预案 |
+|---|---|
+| 为什么用 PMI、为什么是 20 步？ | E1-R 敏感性分析（事先写进协议） |
+| ML-20M 只用 2.5 万用户，有代表性吗？ | 随机抽样（种子 0），报告子集与全量的统计对比；可选 E11 |
+| 只研究了 Mamba-1 式的块 | Mamba4Rec 的混合器是 SIGMA、TiM4Rec 等后续模型的基础；SSD4Rec 用的是 Mamba-2（SSD），可选 E9 补上 |
+| 合成任务太人工 | 合成任务只用来分离能力；E1 在真实数据上找到需要这些能力的用户，两者互相对应 |
+| GRU4Rec 参照是否配好？ | E5 `gru_ln` |
+| 种子太少（E3、E4 只有 3 个） | 只按区间和方向判定，并在文中说明；合成任务的数据种子固定，只变训练种子 |
+| ML-1M 上训练是否充分？ | 表 9 的最佳轮次 37–64，远离 200 轮上限；可选 E7 |
+| 选择性"有能力但没用"是否自相矛盾？ | 三层证据：真实数据整体（H5）→ 远程证据用户（H6c）→ 合成周期任务（H10）。三层结果一起写，不只挑一层 |
+
+## 10. 考虑过、但没有纳入的想法（附原因，备查）
+
+| 想法 | 试点结果 | 为什么不纳入 |
+|---|---|---|
+| 成员推断：SSM 是否泄漏更少 | 架构间 AUC 差 ≤ 0.053，方向不一致；泄漏程度由数据决定（短序列 Amazon 0.90–0.95，ML-1M 0.59–0.61） | 与架构无关，不属于本文主线；最多在讨论里提一句 |
+| 训练预算是否改变架构排名 | 5 个数据集排名都不变；Amazon 最佳轮次 10–35 | 不改变结论；只保留 E7 作为可选稳健性 |
+| 从 SASRec 蒸馏到 Mamba4Rec | 只用输出蒸馏，学生就达到或超过老师（试点 +30% / +94%） | 在 S1 的外壳下 Mamba 已经不弱于 SASRec，与本文问题无关 |
+| 头部 / 尾部目标上的架构胜负 | 试点中 SASRec 的优势集中在尾部目标 | S1 已有按目标流行度分层，重复 |
+| 注意力头级别的机理分析（"复制头"） | 去掉任何单个注意力头，自我推荐都不降反升 → 不是复制头造成的 | 机制已被 Kozaki et al. 发表；只作为第 5 节引用 |
+| Δ 时间尺度作为独立课题 | Δ 改 200 倍只影响 1.4–4.6% | 已作为可选 E6 |
+| 状态槽多兴趣、端侧极小模型、μP 等 | 都未通过试点门槛 | 与本文无关 |
+| 局部打乱顺序的数据增强（另一个候选课题 A6） | 试点中打乱增强让 Mamba4Rec +7.9% / +9.7%，让 SASRec −5.2% / −7.1% | 作为独立课题保留，不并入本文。它与 S1 的"用完全打乱的历史训练"相邻，以后写 A6 时要引用本文，并说明区别：局部打乱是正则化手段，完全打乱是安慰剂 |
 
 ---
 
@@ -344,3 +398,16 @@ def synth_data(task, N=500):
 **精确性检查**：`Σ_s M_{T,s} + M_bias` 必须等于真实的 `out_T`（试点的相对误差 < 1e-6）。
 **归因分数**：`score_s = <M_{T,s}, ∂f/∂out_T>`，梯度经过该块的残差 + LayerNorm + FFN 线性化。
 **2 个块**：每块按上式得到位置间的贡献矩阵（按行归一化），`Ã = 0.5 I + 0.5 W`，展开 `R = Ã^(2) Ã^(1)`，`score_s = R_{T,s}`（次要分析，事先写入协议）。
+
+## 附录 E　英文贡献点与摘要草稿（数字待实验完成后填写，[ ] 为占位）
+
+**Contributions (draft)**
+1. A controlled decomposition of Mamba-based sequential recommenders into selectivity, recurrent state, recency, order, and last-item components, with a matched wrapper, a matched tuning budget, five seeds, and pre-registered paired tests (S1).
+2. Evidence that the value of a recurrent state depends on where the predictive evidence lies: at the dataset level (short Amazon histories versus MovieLens-1M and MovieLens-20M) and at the user level, through evidence-distance slices that separate users whose most informative past item is far back from users whose evidence is recent, controlling for history length.
+3. Controlled synthetic capability tasks (first-order transitions, pair-conditioned transitions, periodic repurchase) that show which sequence mixers can learn which structure, and whether input-dependent selectivity is needed for it.
+4. Evidence that hidden-attention explanations of Mamba recommenders are faithful only in the regime where the state is used.
+5. A public release of the code, data splits, frozen protocols, and per-user ranks of every run.
+
+**Abstract skeleton**（按 H6–H11 全部成立来写；哪条不成立，就删改对应的句子。"每个长度三分位都成立"和"选择性只对远程用户有用"目前只有 ML-1M 的探索性证据）
+
+Mamba, a selective state space model, is increasingly used as the sequence encoder of next-item recommenders, but it is unclear which of its components produce the reported gains and when they matter. We report a controlled study in which all models share one wrapper and differ only in the sequence mixer, from the selective Mamba block down to a recency filter, an order-free pooling mixer, and the last item alone. On three short-history Amazon datasets, a fixed recency filter is more accurate than the Mamba mixer and order-free pooling is non-inferior to it. On MovieLens-1M and MovieLens-20M, the state space mixers are the most accurate ([ ]% and [ ]% over order-free pooling). Within a dataset, the advantage of the recurrent state is concentrated on users whose most informative past item lies at least 20 steps back ([ ]% versus [ ]% for users with recent evidence), and this holds within every history-length tertile; even the gain of input-dependent selectivity, which is not significant on average, appears only for these users. Synthetic tasks show that [ ]. Hidden-attention explanations agree with leave-one-out attributions on long histories (Spearman [ ]) but are less faithful than a recency rule on short ones. The value of a Mamba encoder therefore depends on where the evidence lies in the history, and recency baselines and evidence-distance slices should be part of every comparison.
