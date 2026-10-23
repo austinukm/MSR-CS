@@ -1,7 +1,7 @@
 # S2 扩展计划（2026-10-22）：从"哪个部件带来精度"到"什么时候需要状态"
 
 > **用途**：在 S1（本仓库现有的论文与 361 个运行）的基础上加入 4 组新实验，合成一篇论文。S1 尚未投稿，直接整合（投稿与期刊见第 7 节）。
-> **目录**：1 结构｜2 新实验 E1–E7｜3 新假设 H6–H11｜4 执行顺序｜5 论文改动｜6 风险｜7 投稿与定位｜8 其他想法 E8–E11｜9 审稿人问题预案｜10 未纳入的想法｜附录 A 试点数字｜B 切片代码｜C 合成数据代码｜D HA 分解｜E 英文贡献点与摘要草稿
+> **目录**：**11 紧急核对：SASRec 位置嵌入初始化（先做）**｜1 结构｜2 新实验 E1–E7｜3 新假设 H6–H11｜4 执行顺序｜5 论文改动｜6 风险｜7 投稿与定位｜8 其他想法 E8–E11｜9 审稿人问题预案｜10 未纳入的想法｜附录 A 试点数字｜B 切片代码｜C 合成数据代码｜D HA 分解｜E 英文贡献点与摘要草稿
 > **这是计划，不是冻结协议。** 第 3 节的新假设要在开跑前另存为 `protocol/PROTOCOL_S2_FROZEN_<日期>.md`，记录 SHA-256 后再跑，写法与 S1 协议相同（偏离逐条追加）。
 > **附录 A 的试点数字来自另一套实现**（1 层 Mamba4Rec、Mamba4Rec 原始初始化、单个种子、部分数据集不同），只用来决定"做什么"，**不进论文**。论文里的所有新数字都必须用本仓库的外壳（`src/s1_lib.py`）、7 种混合器、调参网格和种子重跑。两套实现的结论在 Amazon 上甚至方向不同（试点：SASRec 比 Mamba4Rec 高 12%；S1：Mamba 比 SASRec 高 5%，同一份 Baby 数据），不能混用。
 
@@ -411,3 +411,19 @@ def synth_data(task, N=500):
 **Abstract skeleton**（按 H6–H11 全部成立来写；哪条不成立，就删改对应的句子。"每个长度三分位都成立"和"选择性只对远程用户有用"目前只有 ML-1M 的探索性证据）
 
 Mamba, a selective state space model, is increasingly used as the sequence encoder of next-item recommenders, but it is unclear which of its components produce the reported gains and when they matter. We report a controlled study in which all models share one wrapper and differ only in the sequence mixer, from the selective Mamba block down to a recency filter, an order-free pooling mixer, and the last item alone. On three short-history Amazon datasets, a fixed recency filter is more accurate than the Mamba mixer and order-free pooling is non-inferior to it. On MovieLens-1M and MovieLens-20M, the state space mixers are the most accurate ([ ]% and [ ]% over order-free pooling). Within a dataset, the advantage of the recurrent state is concentrated on users whose most informative past item lies at least 20 steps back ([ ]% versus [ ]% for users with recent evidence), and this holds within every history-length tertile; even the gain of input-dependent selectivity, which is not significant on average, appears only for these users. Synthetic tasks show that [ ]. Hidden-attention explanations agree with leave-one-out attributions on long histories (Spearman [ ]) but are less faithful than a recency rule on short ones. The value of a Mamba encoder therefore depends on where the evidence lies in the history, and recency baselines and evidence-distance slices should be part of every comparison.
+
+## 11. 紧急核对（2026-10-23 新增，优先于其他新实验）：SASRec 位置嵌入初始化
+
+**发现**（另一套试点代码，7 个数据集 × 3 个种子，门槛事先写好）：SASRec 的位置嵌入如果用 `nn.Embedding` 的默认初始化 N(0, 1)，在左填充的序列里，读出位置（最后一个位置）对所有用户都加同一个位置向量，用户表示因此挤向同一个方向（各向异性）。只把位置嵌入改成 N(0, 0.02)（RecBole 的做法），其他完全不变：
+- 用户表示各向异性从 0.23–0.42 降到 0.08–0.36，与 Mamba4Rec 相近；
+- Amazon 上 NDCG@10 提高 +0.6% ~ +13.2%（Pantry +13.2%、Baby +11.5%、Scientific +4.8%），ML-1M 不变（−0.0%）；
+- 反馈闭环 5 轮后推荐覆盖率提高 2–4 倍，并超过 Mamba4Rec；
+- 用户向量需要的比特减少，部分数据集与 Mamba4Rec 持平。
+
+**与本仓库的关系**：`src/s1_lib.py` 第 185 行 `self.pos = nn.Embedding(L, d)` 同样是默认 N(0, 1)，第 211 行加在 LayerNorm 后的物品嵌入上（两者量级相当，影响可能比试点小）。S1 在 Amazon 上"Mamba 比 SASRec 高约 5%"、"SASRec 低于 EMA / last+mean"等结论里，SASRec 可能被这个初始化低估。
+
+**建议（约 1 小时 GPU）**：
+1. 在 `Seq.__init__` 里加一个变体 `sasrec_p02`：`self.pos = nn.Embedding(L, d); nn.init.normal_(self.pos.weight, std=0.02)`，其余不变。
+2. 在 baby、sports、clothing、ml1m 上跑完整网格 + 5 个种子，与现有 `sasrec` 比较；同时用 `test.ranks` 看各向异性（用户表示两两余弦平均）。
+3. 若 `sasrec_p02` 明显更好，论文里 SASRec 一律用它（或两个都报告），并在附录说明；表 2、图 2、H4b 的 SASRec 数字随之更新。若影响很小，在附录里报告这个检查即可。
+4. 写进 S2 协议（这是在看到本仓库任何新结果之前提出的检查）。
